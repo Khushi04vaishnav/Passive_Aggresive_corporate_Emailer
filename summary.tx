@@ -1,0 +1,97 @@
+THE PASSIVE-AGGRESSIVE CORPORATE EMAILER
+Project Summary — The AI Product Roast & Pivot Challenge
+==================================================================
+
+1. WHAT THE APP DOES
+---------------------
+It's a satirical Streamlit web app built for a hackathon about AI product
+risk. You paste in a message someone sent you (or pick a scripted demo
+scenario), pick who sent it (Coworker / Manager / External Client) and a
+"Corporate Honesty Level" from 1-5, and the app drafts a reply that sounds
+professional on the surface but leaks real irritation, sarcasm, or
+bluntness underneath — powered by Gemini when an API key is configured,
+falling back to local template banks otherwise so the demo never breaks.
+
+The product intentionally ships with two realistic AI failure modes built
+in, because the point of the challenge is to roast bad AI product
+decisions, not just build a working feature:
+  - "Auto-Send Mode" — a toggle that fires the reply with zero human
+    review, demonstrating what happens with no human-in-the-loop.
+  - A simulated confidential-data leak — when Auto-Send is ON and the
+    recipient is an External Client, the bot can accidentally weave an
+    internal-only detail (e.g. overdue invoice, deprioritized project)
+    into a reply sent straight to the client.
+
+2. WHAT WE ADDED — THE SAFETY COPILOT LAYER
+--------------------------------------------
+A teammate built the original app (UI, branding, reply generator, demo
+scenarios). Separately, another workstream built a standalone "AI
+Communication Safety Copilot" — a deterministic risk-scanning engine
+originally in its own app. Our job was to merge that safety logic into
+the teammate's app without changing its design, so the final product
+tells one coherent story: "here's the risky AI feature, and here's the
+guardrail that should always sit in front of it."
+
+What got merged in:
+  - A "Safety Shield" panel that scans both the incoming message and the
+    generated reply for four categories: toxicity/harassment, confidential
+    data (secrets, PII, financial info), prompt injection attempts, and
+    unsafe requests. It's pure pattern-matching (regex), not another LLM
+    call, on purpose — so it can't be talked out of doing its job by a
+    cleverly worded prompt.
+  - Three risk outcomes: LOW (safe to review as normal), REVIEW (flagged
+    but shown), and BLOCKED (the reply is withheld entirely — Send/
+    Auto-Send controls disappear and a safe-alternative suggestion is
+    shown instead). BLOCKED overrides Auto-Send too: even in the risky,
+    no-review mode, a genuinely unsafe reply cannot go out.
+  - A Red-Team Security Lab page — lets anyone throw a custom attack or a
+    seeded one at the Safety Shield directly and see whether it gets
+    blocked, individually or as a full batch run.
+  - A Security Dashboard page — an aggregate scorecard against our own
+    30-case adversarial test suite (prompt injection, confidential data
+    requests, toxicity, unsafe requests), showing block rate by category
+    and flagging any case that didn't match its expected outcome.
+
+3. HOW IT'S BUILT (FOR THE TECHNICAL AUDIENCE)
+------------------------------------------------
+  app.py           - Streamlit UI: layout, sidebar controls, the Safety
+                      Shield panel, Safe Mode vs Auto-Send output flow.
+  generator.py      - The reply-generation "brain": Gemini prompt
+                      building + local template fallback, demo scenarios.
+  brand.py          - Shared brand CSS/colors, reused across the main
+                      app and both extra pages so the design stays one
+                      consistent system instead of copy-pasted styling.
+  core/models.py     - RiskLevel / RiskResult data models (pydantic).
+  core/safety.py     - Deterministic regex checks per risk category.
+  core/risk.py       - Aggregates safety.py findings into a single
+                      scored RiskResult that drives the Safety Shield UI.
+  data/red_team_cases.json - 30 seeded adversarial test cases.
+  pages/             - Red-Team Security Lab and Security Dashboard,
+                      auto-discovered by Streamlit's multipage nav.
+
+Nothing about the teammate's original layout, colors, or reply-generation
+logic was changed — the safety layer was added on top of the existing
+flow, and the shared brand.py means every screen (main app + both extra
+pages) looks like one product, not three stitched-together demos.
+
+4. WHY THIS MATTERS FOR THE PITCH
+------------------------------------
+The whole point of the challenge is showing judges we understand AI
+product risk, not just that we can prompt an LLM. This merge turns two
+separate proof-of-concepts into one demo that tells a complete story:
+  1. Here's an AI feature shipped carelessly (no review step, tone-blind,
+     can leak internal data to clients).
+  2. Here's the guardrail a responsible team would put in front of it —
+     and it's provably effective, backed by our own red-team suite.
+That framing directly answers the "what would a safer version need"
+section already in the app's own Risk Notes footer.
+
+5. HOW TO RUN IT
+------------------
+  pip install -r requirements.txt
+  streamlit run app.py
+
+Opens at http://localhost:8501. The Red-Team Lab and Security Dashboard
+appear automatically in the sidebar. A Gemini API key is optional — set
+GEMINI_API_KEY as an environment variable or in .streamlit/secrets.toml;
+without it, the app runs entirely on local templates.

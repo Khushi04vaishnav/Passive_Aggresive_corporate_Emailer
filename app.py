@@ -6,6 +6,8 @@ Layout, branded styling, buttons, and page logic live here.
 All reply-generation logic lives in generator.py (kept UI-free on purpose).
 """
 
+import html
+
 import streamlit as st
 from generator import (
     generate_reply,
@@ -13,13 +15,9 @@ from generator import (
     SENDER_TYPES,
     DEMO_SCENARIOS,
 )
-
-# ---------------------------------------------------------------------------
-# Brand constants (official hackathon brand guidelines)
-# ---------------------------------------------------------------------------
-NAVY = "#0D1B2A"
-GOLD = "#E0A96D"
-ELECTRIC_BLUE = "#1F6FEB"
+from brand import NAVY, GOLD, ELECTRIC_BLUE, inject_css
+from core.models import RiskLevel
+from core.risk import assess_risk, SAFE_ALTERNATIVE
 
 st.set_page_config(
     page_title="The Passive-Aggressive Corporate Emailer",
@@ -30,219 +28,7 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 # Brand CSS
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# Brand CSS
-# ---------------------------------------------------------------------------
-st.markdown(
-    f"""
-    <style>
-
-    /* =========================================================
-       MAIN APP
-       ========================================================= */
-
-    .stApp {{
-    background-color: {NAVY};
-    color: #FFFFFF;
-}}
-
-/* Remove Streamlit top white header */
-header[data-testid="stHeader"] {{
-    display: none !important;
-}}
-
-[data-testid="stAppViewContainer"] {{
-    padding-top: 0 !important;
-}}
-
-.block-container {{
-    padding-top: 0 !important;
-}}
-
-
-/* Main headings */
-h1, h2, h3, h4 {{
-    color: {GOLD} !important;
-}}
-
-    /* Normal text */
-    p {{
-        color: #FFFFFF;
-    }}
-
-
-    /* =========================================================
-       SIDEBAR
-       ========================================================= */
-
-    [data-testid="stSidebar"] {{
-        background-color: {NAVY};
-        border-right: 1px solid {GOLD};
-    }}
-
-    /* Sidebar normal text */
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] span {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Sidebar headings */
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3,
-    [data-testid="stSidebar"] h4 {{
-        color: {GOLD} !important;
-    }}
-
-    /* Sidebar radio buttons */
-    [data-testid="stSidebar"] [data-testid="stRadio"] label {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Radio button text */
-    [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] label {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Selectbox label */
-    [data-testid="stSidebar"] [data-testid="stSelectbox"] label {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Slider label */
-    [data-testid="stSidebar"] [data-testid="stSlider"] label {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Toggle label */
-    [data-testid="stSidebar"] [data-testid="stToggle"] label {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Sidebar captions/help text */
-    [data-testid="stSidebar"] small,
-    [data-testid="stSidebar"] .stCaption {{
-        color: #D9E2EC !important;
-    }}
-
-
-    /* =========================================================
-       INPUTS / SELECTBOXES
-       ========================================================= */
-
-    /* Text area */
-    textarea {{
-        background-color: #142236 !important;
-        color: #FFFFFF !important;
-        border: 1px solid {GOLD} !important;
-    }}
-
-    textarea::placeholder {{
-        color: #AAB7C4 !important;
-    }}
-
-    /* Selectbox */
-    [data-baseweb="select"] > div {{
-        background-color: #142236 !important;
-        color: #FFFFFF !important;
-        border-color: {GOLD} !important;
-    }}
-
-    [data-baseweb="select"] input {{
-        color: #FFFFFF !important;
-    }}
-
-    /* Selectbox selected text */
-    [data-baseweb="select"] span {{
-        color: #FFFFFF !important;
-    }}
-
-
-    /* =========================================================
-       BUTTONS
-       ========================================================= */
-
-    .stButton > button {{
-        background-color: {ELECTRIC_BLUE};
-        color: #FFFFFF !important;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        padding: 0.5em 1.2em;
-    }}
-
-    .stButton > button:hover {{
-        background-color: {GOLD};
-        color: {NAVY} !important;
-    }}
-
-
-    /* =========================================================
-       REPLY BOX
-       ========================================================= */
-
-    .reply-box {{
-        background-color: #142236;
-        border: 1px solid {GOLD};
-        border-radius: 10px;
-        padding: 1.2em;
-        margin-top: 1em;
-        color: #FFFFFF;
-    }}
-
-
-    /* =========================================================
-       WARNING
-       ========================================================= */
-
-    .leak-warning {{
-        background-color: #3a1414;
-        border: 1px solid #d94f4f;
-        border-radius: 10px;
-        padding: 1em;
-        margin-top: 0.8em;
-        color: #ffb3b3;
-    }}
-
-
-    /* =========================================================
-       SAFE / RISKY BADGES
-       ========================================================= */
-
-    .safe-badge {{
-        display: inline-block;
-        background-color: {ELECTRIC_BLUE};
-        color: #FFFFFF !important;
-        border-radius: 20px;
-        padding: 0.2em 0.9em;
-        font-size: 0.85em;
-        font-weight: 600;
-    }}
-
-    .risky-badge {{
-        display: inline-block;
-        background-color: #d94f4f;
-        color: #FFFFFF !important;
-        border-radius: 20px;
-        padding: 0.2em 0.9em;
-        font-size: 0.85em;
-        font-weight: 600;
-    }}
-
-
-    /* =========================================================
-       DIVIDERS
-       ========================================================= */
-
-    hr {{
-        border-color: rgba(224, 169, 109, 0.35) !important;
-    }}
-
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+inject_css()
 
 # ---------------------------------------------------------------------------
 # Sidebar — logo + controls
@@ -298,6 +84,8 @@ if "current_reply" not in st.session_state:
     st.session_state.current_reply = None
 if "current_leaked" not in st.session_state:
     st.session_state.current_leaked = False
+if "current_risk" not in st.session_state:
+    st.session_state.current_risk = None
 
 # ---------------------------------------------------------------------------
 # Free Input Mode
@@ -312,6 +100,7 @@ if mode == "Free Input Mode":
             st.session_state.current_reply = result["reply"]
             st.session_state.current_leaked = result["leaked"]
             st.session_state.source = result["source"]
+            st.session_state.current_risk = assess_risk(message, result["reply"])
         else:
             st.warning("Type a message first.")
 
@@ -337,6 +126,7 @@ else:
         st.session_state.current_reply = result["reply"]
         st.session_state.current_leaked = result["leaked"]
         st.session_state.source = result["source"]
+        st.session_state.current_risk = assess_risk(scenario["message"], result["reply"])
 
 # ---------------------------------------------------------------------------
 # Output — Safe Mode (review/edit/delete) vs Risky Mode (fires immediately)
@@ -351,7 +141,51 @@ if st.session_state.current_reply:
             unsafe_allow_html=True,
         )
 
-    if not auto_send:
+    # -----------------------------------------------------------------------
+    # Safety Shield — deterministic scan of the message + generated reply
+    # -----------------------------------------------------------------------
+    risk = st.session_state.current_risk
+    blocked = risk is not None and risk.risk_level == RiskLevel.BLOCKED
+    if risk is not None:
+        st.markdown(f"<h4>🛡️ Safety Shield</h4>", unsafe_allow_html=True)
+
+        shield_rows = [
+            ("Toxicity", risk.toxicity_detected),
+            ("Confidential Data", risk.confidential_data_detected),
+            ("Prompt Injection", risk.prompt_injection_detected),
+            ("Unsafe Request", risk.unsafe_request_detected),
+        ]
+        cols = st.columns(len(shield_rows))
+        for col, (label, detected) in zip(cols, shield_rows):
+            with col:
+                st.metric(
+                    label,
+                    "DETECTED" if detected else "NONE",
+                    delta="🚨 Risk" if detected else "✓ Safe",
+                    delta_color="inverse" if detected else "normal",
+                )
+
+        if risk.risk_level == RiskLevel.BLOCKED:
+            reasons_html = "".join(f"<li>{html.escape(r)}</li>" for r in risk.reasons)
+            st.markdown(
+                f"<div class='shield-blocked'>🚫 <b>RESPONSE BLOCKED</b><ul>{reasons_html}</ul>"
+                f"<b>Suggested alternative:</b> {html.escape(SAFE_ALTERNATIVE)}</div>",
+                unsafe_allow_html=True,
+            )
+        elif risk.risk_level == RiskLevel.REVIEW:
+            st.markdown(
+                "<div class='shield-review'>⚠️ <b>REVIEW REQUIRED</b> — flagged for a closer look before sending.</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                "<div class='shield-low'>🟢 <b>LOW RISK</b> — safe to review.</div>",
+                unsafe_allow_html=True,
+            )
+
+    if blocked:
+        st.caption(f"Generated via: {st.session_state.get('source', 'template')}")
+    elif not auto_send:
         st.markdown(f"<h4>Safe Mode — Review before sending</h4>", unsafe_allow_html=True)
         edited = st.text_area("Edit the reply if needed:", value=st.session_state.current_reply, height=150)
         c1, c2 = st.columns(2)
@@ -361,12 +195,13 @@ if st.session_state.current_reply:
         with c2:
             if st.button("🗑️ Delete"):
                 st.session_state.current_reply = None
+                st.session_state.current_risk = None
                 st.rerun()
+        st.caption(f"Generated via: {st.session_state.get('source', 'template')}")
     else:
         st.markdown(f"<h4>⚡ Auto-Sent — no review step</h4>", unsafe_allow_html=True)
         st.markdown(f"<div class='reply-box'>{st.session_state.current_reply}</div>", unsafe_allow_html=True)
-
-    st.caption(f"Generated via: {st.session_state.get('source', 'template')}")
+        st.caption(f"Generated via: {st.session_state.get('source', 'template')}")
 
 # ---------------------------------------------------------------------------
 # Risk Notes footer
