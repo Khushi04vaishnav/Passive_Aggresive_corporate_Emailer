@@ -108,6 +108,30 @@ _CLOSERS = {
     5: ["We need to talk. Today.", "This is your final reminder. Genuinely."],
 }
 
+# Email subject lines, scaled to honesty level for the same "polite surface,
+# pointed underneath" effect as the body text.
+_SUBJECTS = {
+    1: ["Following up", "Quick follow-up on this"],
+    2: ["Re: Following up (again)", "Just checking in"],
+    3: ["Re: Still waiting on this", "A gentle-ish follow-up"],
+    4: ["We need to talk about this", "Following up — seriously this time"],
+    5: ["This can't wait any longer", "Immediate response needed"],
+}
+
+_SIGN_OFFS = {
+    1: "Best,",
+    2: "Best regards,",
+    3: "Regards,",
+    4: "Sincerely,",
+    5: "Regards (for real this time),",
+}
+
+_GREETINGS = {
+    "Coworker (Peer)": "Hi,",
+    "Manager / Boss": "Hi,",
+    "External Client": "Hello,",
+}
+
 # Fake "internal-only" details used to simulate a confidential data leak.
 # These are clearly fictional placeholders for demo purposes only.
 _CONFIDENTIAL_DETAILS = [
@@ -176,7 +200,7 @@ def generate_reply(message: str, sender_type: str, honesty_level: int, auto_send
         except Exception:
             pass  # fall through to local templates
 
-    reply = _generate_with_templates(honesty_level, leaked_detail)
+    reply = _generate_with_templates(sender_type, honesty_level, leaked_detail)
     return {"reply": reply, "leaked": leaked, "source": "template"}
 
 
@@ -191,7 +215,8 @@ def _generate_with_gemini(client, message, sender_type, honesty_level, leaked_de
         )
 
     prompt = f"""You are "The Passive-Aggressive Corporate Emailer" — a satirical tool built for a
-hackathon demo about AI product risk. Write a SHORT reply (3-5 sentences) to the message below.
+hackathon demo about AI product risk. Write a SHORT reply (3-5 sentences) to the message below,
+formatted as a complete email.
 
 Recipient type: {sender_type}
 Corporate Honesty Level: {honesty_level}/5 — {level_desc}
@@ -200,13 +225,21 @@ Style rules:
 - Sound outwardly professional and "corporate polite" on the surface.
 - Let real irritation, sarcasm, or bluntness leak through underneath, scaled to the honesty level.
 - Never use profanity or slurs. Keep it workplace-appropriate satire, not genuinely abusive.
-- Do not add a subject line or signature — just the reply body.
+- Format the output as a plain-text email with exactly this structure, each part on its own line(s):
+  Subject: <a short subject line matching the honesty level>
+
+  <greeting, e.g. "Hi," or "Hello,">
+
+  <the 3-5 sentence body>
+
+  <a one-line sign-off, e.g. "Best regards,">
+  [Your Name]
 {leak_instruction}
 
 Message to reply to:
 \"\"\"{message}\"\"\"
 
-Reply:"""
+Email reply:"""
 
     response = client.models.generate_content(
         model=GEMINI_MODEL,
@@ -218,13 +251,24 @@ Reply:"""
     return text
 
 
-def _generate_with_templates(honesty_level, leaked_detail):
+def _generate_with_templates(sender_type, honesty_level, leaked_detail):
+    subject = random.choice(_SUBJECTS[honesty_level])
+    greeting = _GREETINGS.get(sender_type, "Hi,")
     opener = random.choice(_OPENERS[honesty_level])
     body = random.choice(_BODIES[honesty_level])
     closer = random.choice(_CLOSERS[honesty_level])
+    sign_off = _SIGN_OFFS[honesty_level]
 
-    parts = [opener, body]
+    body_parts = [opener, body]
     if leaked_detail:
-        parts.append(leaked_detail.capitalize() + ".")
-    parts.append(closer)
-    return " ".join(parts)
+        body_parts.append(leaked_detail.capitalize() + ".")
+    body_parts.append(closer)
+    body_text = " ".join(body_parts)
+
+    return (
+        f"Subject: {subject}\n\n"
+        f"{greeting}\n\n"
+        f"{body_text}\n\n"
+        f"{sign_off}\n"
+        f"[Your Name]"
+    )

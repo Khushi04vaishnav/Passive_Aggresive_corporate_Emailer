@@ -1,5 +1,4 @@
 """Deterministic (non-LLM) safety checks.
-
 These run on both the incoming message and the generated draft. Keeping
 them as plain pattern matching -- not a model call -- means they can't be
 argued out of doing their job by a cleverly worded prompt.
@@ -11,10 +10,15 @@ from dataclasses import dataclass, field
 # --- Toxicity / harassment -------------------------------------------------
 
 _TOXICITY_PATTERNS = [
-    r"\b(stupid|idiot|incompetent|pathetic|worthless|useless|moron|dumb)\b",
+    r"\b(stupid|idiot|incompetent|pathetic|worthless|useless|moron|dumb|"
+    r"terrible|awful|horrible|lazy|trash|garbage|loser|clown|disgusting|"
+    r"toxic|insufferable|arrogant)\b",
     r"\bmake\s+\w+\s+feel\s+(stupid|small|worthless)\b",
-    r"\b(humiliat\w*|degrad\w*|belittl\w*)\b",
-    r"\b(shut up|screw you|get lost)\b",
+    r"\b(humiliat\w*|degrad\w*|belittl\w*|mock\w*|ridicul\w*)\b",
+    r"\b(shut up|screw you|get lost|piss off)\b",
+    r"\bwaste of (time|space|money)\b",
+    r"\b(can'?t stand|hate (working|dealing) with) (you|him|her|them)\b",
+    r"\byou'?re (such )?a (jerk|loser|clown|disgrace|joke)\b",
 ]
 
 _THREAT_PATTERNS = [

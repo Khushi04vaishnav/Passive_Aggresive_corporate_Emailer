@@ -187,7 +187,7 @@ if st.session_state.current_reply:
         st.caption(f"Generated via: {st.session_state.get('source', 'template')}")
     elif not auto_send:
         st.markdown(f"<h4>Safe Mode — Review before sending</h4>", unsafe_allow_html=True)
-        edited = st.text_area("Edit the reply if needed:", value=st.session_state.current_reply, height=150)
+        edited = st.text_area("Edit the reply if needed:", value=st.session_state.current_reply, height=300)
         c1, c2 = st.columns(2)
         with c1:
             if st.button("✅ Send"):
