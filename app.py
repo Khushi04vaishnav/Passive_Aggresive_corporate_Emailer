@@ -101,6 +101,7 @@ if mode == "Free Input Mode":
             st.session_state.current_leaked = result["leaked"]
             st.session_state.source = result["source"]
             st.session_state.current_risk = assess_risk(message, result["reply"])
+            st.session_state.reply_sent = False
         else:
             st.warning("Type a message first.")
 
@@ -127,6 +128,7 @@ else:
         st.session_state.current_leaked = result["leaked"]
         st.session_state.source = result["source"]
         st.session_state.current_risk = assess_risk(scenario["message"], result["reply"])
+        st.session_state.reply_sent = False
 
 # ---------------------------------------------------------------------------
 # Output — Safe Mode (review/edit/delete) vs Risky Mode (fires immediately)
@@ -191,12 +193,21 @@ if st.session_state.current_reply:
         c1, c2 = st.columns(2)
         with c1:
             if st.button("✅ Send"):
-                st.success("Reply sent (simulated).")
+                st.session_state.reply_sent = True
         with c2:
             if st.button("🗑️ Delete"):
                 st.session_state.current_reply = None
                 st.session_state.current_risk = None
+                st.session_state.reply_sent = False
                 st.rerun()
+        if st.session_state.get("reply_sent"):
+            st.markdown(
+                "<div style='background:#0f5132; border:1px solid #1a7f4b; color:#d1f7e0; "
+                "padding:0.85em 1.1em; border-radius:8px; margin-top:0.9em; font-weight:600;'>"
+                "✅ Reply sent successfully! (simulated)</div>",
+                unsafe_allow_html=True,
+            )
+            st.toast("Reply sent successfully!", icon="✅")
         st.caption(f"Generated via: {st.session_state.get('source', 'template')}")
     else:
         st.markdown(f"<h4>⚡ Auto-Sent — no review step</h4>", unsafe_allow_html=True)
